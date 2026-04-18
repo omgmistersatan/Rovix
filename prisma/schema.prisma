@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PLAYER
+  CREATOR
+  ADMIN
+}
+
+enum GameStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          UserRole      @default(PLAYER)
+  walletCoins   Int           @default(0)
+  creatorBio    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  games         Game[]
+  orders        Order[]
+}
+
+model Game {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  description   String
+  genre         String
+  thumbnailUrl  String
+  studioName    String
+  playersOnline Int           @default(0)
+  visits        Int           @default(0)
+  featured      Boolean       @default(false)
+  status        GameStatus    @default(DRAFT)
+  creatorId     String
+  creator       User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model CoinPack {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Decimal  @db.Decimal(10, 2)
+  coins       Int
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  userId             String
+  coinPackId         String
+  amount             Decimal     @db.Decimal(10, 2)
+  coins              Int
+  provider           String      @default("VEXOPAY")
+  providerTxId       String?     @unique
+  providerStatus     String?
+  status             OrderStatus @default(PENDING)
+  creditedAt         DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coinPack           CoinPack    @relation(fields: [coinPackId], references: [id])
+}
